@@ -1,0 +1,5 @@
+fitbit==0.3.1
+python-dateutil>=1.5
+requests-oauthlib>=0.7
+cherrypy
+pytz
