@@ -5,10 +5,7 @@ import datetime
 
 TIMEZONE = pytz.timezone("America/Los_Angeles")
 
-WEEKDAY = {5: "SATURDAY"}
-
-# client.get_devices()[0]['id']
-DEVICE_ID = "883272325"
+# WEEKDAY = {5: "SATURDAY"}
 
 
 def get_client(client_id, client_secret):
@@ -31,20 +28,20 @@ def get_client(client_id, client_secret):
     return auth2_client
 
 
-def update_alarm(client, after_mins=10):
+def update_alarm(client, device_id, after_mins=10):
     # Update the first alarm
     now = datetime.datetime.now()
-    alarm_id = client.get_alarms(DEVICE_ID)["trackerAlarms"][0]["alarmId"]
+    alarm_id = client.get_alarms(device_id)["trackerAlarms"][0]["alarmId"]
     alarm_time = TIMEZONE.localize(now) + datetime.timedelta(minutes=after_mins)
     client.update_alarm(
-        DEVICE_ID, alarm_id, alarm_time, week_days=[], snooze_length=1, snooze_count=3
+        device_id, alarm_id, alarm_time, week_days=[], snooze_length=1, snooze_count=3
     )
 
 
-def add_alarm(client, after_mins=10):
+def add_alarm(client, device_id, after_mins=10):
     now = datetime.datetime.now()
     alarm_time = TIMEZONE.localize(now) + datetime.timedelta(minutes=after_mins)
-    client.add_alarm(DEVICE_ID, alarm_time, [WEEKDAY[alarm_time.weekday()]])
+    client.add_alarm(device_id, alarm_time, week_days=[])
 
 
 def fetch_heartrate(client):
@@ -52,19 +49,28 @@ def fetch_heartrate(client):
     print(result)
 
 
+def get_device_id(client):
+    return client.get_devices()[0]["id"]
+
+
 def run():
     import argparse
 
     parser = argparse.ArgumentParser(description="Aware")
-    parser.add_argument("--client-id", default=64, type=str)
-    parser.add_argument("--secret", default=256, type=str)
+    parser.add_argument("--client-id", required=True, default=64, type=str)
+    parser.add_argument("--secret", required=True, default=256, type=str)
+    parser.add_argument("--device-id", default=None)
 
     args = parser.parse_args()
 
     print(f"{args}")
     client = get_client(args.client_id, args.secret)
+    device_id = args.device_id
+    if device_id is None:
+        device_id = get_device_id(client)
+
     fetch_heartrate(client)
-    # update_alarm(client)
+    # update_alarm(client, device_id)
 
 
 if __name__ == "__main__":
