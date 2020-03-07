@@ -27,6 +27,7 @@ class OAuth2Server:
             client_secret,
             redirect_uri=redirect_uri,
             timeout=10,
+            expires_in="60"
         )
 
         self.redirect_uri = redirect_uri
