@@ -22,7 +22,9 @@ class FitBitClient:
     def client_create_or_refresh(self):
         # refresh if client is already created.
         if self.auth2_client is not None:
-            encoded = base64.b64encode(f"{self.client_id}:{self.client_secret}").decode("utf8")
+            encoded = base64.b64encode(
+                bytes(f"{self.client_id}:{self.client_secret}".encode("utf8"))
+            ).decode("utf8")
             headers = {
                 "Authorization": f"Basic {encoded}",
                 "Content-Type": "application/x-www-form-urlencoded",
@@ -58,8 +60,8 @@ class FitBitClient:
         alarm_time = get_localized_now() + datetime.timedelta(minutes=after_mins)
 
         func = self.auth2_client.update_alarm
-        self.do_client_request(func,
-            device_id, alarm_id, alarm_time, week_days=[], snooze_length=1, snooze_count=3
+        self.do_client_request(
+            func, device_id, alarm_id, alarm_time, week_days=[], snooze_length=1, snooze_count=3
         )
 
         return alarm_time
