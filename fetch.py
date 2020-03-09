@@ -22,6 +22,7 @@ class FitBitClient:
     def client_create_or_refresh(self):
         # refresh if client is already created.
         if self.auth2_client is not None:
+            print("Client refreshing is started.")
             encoded = base64.b64encode(
                 bytes(f"{self.client_id}:{self.client_secret}".encode("utf8"))
             ).decode("utf8")
@@ -34,8 +35,16 @@ class FitBitClient:
             r = requests.post(
                 "https://api.fitbit.com/oauth2/token", headers=headers, data=body
             ).json()
+            print(
+                f"Previous access_token: {self.access_token}, previous refresh_token: "
+                f"{self.refresh_token}"
+            )
             self.access_token = r["access_token"]
             self.refresh_token = r["refresh_token"]
+            print(
+                f"New access_token: {self.access_token}, new refresh_token: "
+                f"{self.refresh_token}"
+            )
 
         self.auth2_client = fitbit.Fitbit(
             self.client_id,
@@ -45,23 +54,33 @@ class FitBitClient:
             refresh_token=self.refresh_token,
         )
 
-    def do_client_request(self, func, *args, **kwargs):
+    def get_client_method(self, method_name):
+        return self.auth2_client.__getattribute__(method_name)
+
+    def do_client_request(self, method_name, *args, **kwargs):
         try:
-            return func(*args, **kwargs)
+            method = self.get_client_method(method_name)
+            return method(*args, **kwargs)
         except fitbit.exceptions.HTTPUnauthorized:
+            print(f"HTTPUnauthorized expection is raised for {method_name}")
             self.client_create_or_refresh()
-            return self.do_client_request(func, *args, **kwargs)
+            method = self.get_client_method(method_name)
+            return method(*args, **kwargs)
 
     def update_alarm(self, device_id, after_mins=10):
         # Update the first alarm
-        func = self.auth2_client.get_alarms
-        alarm_id = self.do_client_request(func, device_id)["trackerAlarms"][0]["alarmId"]
+        alarm_id = self.do_client_request("get_alarms", device_id)["trackerAlarms"][0]["alarmId"]
 
         alarm_time = get_localized_now() + datetime.timedelta(minutes=after_mins)
 
-        func = self.auth2_client.update_alarm
         self.do_client_request(
-            func, device_id, alarm_id, alarm_time, week_days=[], snooze_length=1, snooze_count=3
+            "update_alarm",
+            device_id,
+            alarm_id,
+            alarm_time,
+            week_days=[],
+            snooze_length=1,
+            snooze_count=3,
         )
 
         return alarm_time
@@ -69,16 +88,15 @@ class FitBitClient:
     def add_alarm(self, device_id, after_mins=10):
         now = datetime.datetime.now()
         alarm_time = TIMEZONE.localize(now) + datetime.timedelta(minutes=after_mins)
-        func = self.auth2_client.add_alarm
-        self.do_client_request(func, device_id, alarm_time, week_days=[])
+        self.do_client_request("add_alarm", device_id, alarm_time, week_days=[])
 
     def fetch_heartrate(self):
-        func = self.auth2_client.intraday_time_series
-        return self.do_client_request(func, "activities/heart", detail_level="1sec")
+        return self.do_client_request(
+            "intraday_time_series", "activities/heart", detail_level="1sec"
+        )
 
     def get_device_id(self):
-        func = self.auth2_client.get_devices
-        return self.do_client_request(func)[0]["id"]
+        return self.do_client_request("get_devices")[0]["id"]
 
 
 def get_last_n_heartrates(heartrate_data, n=40):
